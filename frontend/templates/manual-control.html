@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>Manual Control - Green Switch</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <style>
+        .light-animate {
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 0.8; }
+            50% { transform: scale(1.1); opacity: 1; }
+            100% { transform: scale(1); opacity: 0.8; }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800 transition-colors duration-300 light-mode h-screen overflow-hidden">
+    <div class="h-full flex">
+        <!-- Sidebar -->
+        <nav id="sidebar" class="bg-gray-900 text-white w-64 p-6 flex-shrink-0 overflow-y-auto">
+            <div class="flex flex-col items-center justify-center mb-10">
+                <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" class="h-16 w-16 object-contain">
+                <h1 class="text-2xl font-bold tracking-tight text-green-500">GreenSwitch</h1>
+            </div>
+            <ul>
+                <li class="mb-4">
+                    <a href="/" class="flex items-center p-3 hover:bg-gray-700/40 text-gray-300 hover:text-white rounded-lg font-semibold transition-colors">Dashboard</a>
+                </li>
+                <li class="mb-4">
+                    <a href="/manual-control" class="flex items-center p-3 bg-green-500/20 text-green-500 rounded-lg font-semibold">Manual Control</a>
+                </li>
+                <li class="mb-4">
+                    <a href="/usage" class="flex items-center p-3 hover:bg-gray-700/40 text-gray-300 hover:text-white rounded-lg font-semibold transition-colors">Energy Usage</a>
+                </li>
+            </ul>
+        </nav>
+        <!-- Main Content -->
+        <main class="flex-1 overflow-y-auto p-6 lg:p-8">
+            <header class="mb-8 flex items-center justify-between">
+                <div>
+                    <h2 class="text-2xl font-bold">Manual Control</h2>
+                    <p class="text-gray-500 mt-1">Control lights individually</p>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <span class="text-gray-500">Light</span>
+                    <label for="themeSwitch" class="inline-flex relative items-center cursor-pointer">
+                        <input type="checkbox" value="" id="themeSwitch" class="sr-only peer">
+                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 dark:peer-focus:ring-green-800 rounded-full peer dark:bg-gray-700 peer-checked:bg-gradient-to-r peer-checked:from-purple-500 peer-checked:to-green-400 transition-all duration-300"></div>
+                        <div class="absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform duration-300 peer-checked:translate-x-5"></div>
+                    </label>
+                    <span class="text-gray-500">Dark</span>
+                </div>
+            </header>
+            <section class="mb-10">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div class="bg-white p-6 rounded-2xl shadow-md text-center">
+                        <div class="flex flex-col items-center">
+                            <i class="fas fa-lightbulb text-4xl text-yellow-500 mb-3 light-icon"></i>
+                            <h5 class="font-semibold mb-4">Light 1</h5>
+                            <div class="flex space-x-4">
+                                <button id="relay1-on" class="bg-green-500 text-white px-6 py-2 rounded-lg">Turn ON</button>
+                                <button id="relay1-off" class="bg-red-500 text-white px-6 py-2 rounded-lg">Turn OFF</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white p-6 rounded-2xl shadow-md text-center">
+                        <div class="flex flex-col items-center">
+                            <i class="fas fa-lightbulb text-4xl text-yellow-500 mb-3 light-icon"></i>
+                            <h5 class="font-semibold mb-4">Light 2</h5>
+                            <div class="flex space-x-4">
+                                <button id="relay2-on" class="bg-green-500 text-white px-6 py-2 rounded-lg">Turn ON</button>
+                                <button id="relay2-off" class="bg-red-500 text-white px-6 py-2 rounded-lg">Turn OFF</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            <div id="manual-status" class="mt-8 text-center text-lg text-gray-600"></div>
+        </main>
+    </div>
+    <script>
+        // Theme handling
+        const themeSwitch = document.getElementById('themeSwitch');
+        const body = document.body;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const theme = localStorage.getItem('theme');
+            if (theme === 'dark') {
+                themeSwitch.checked = true;
+                switchToCosmic();
+            } else {
+                themeSwitch.checked = false;
+                switchToLight();
+            }
+        });
+
+        themeSwitch.addEventListener('change', () => {
+            if (themeSwitch.checked) {
+                switchToCosmic();
+                localStorage.setItem('theme', 'dark');
+            } else {
+                switchToLight();
+                localStorage.setItem('theme', 'light');
+            }
+        });
+
+        function switchToLight() {
+            body.classList.remove('cosmic-mode');
+            body.classList.add('light-mode');
+        }
+
+        function switchToCosmic() {
+            body.classList.remove('light-mode');
+            body.classList.add('cosmic-mode');
+        }
+
+        // Manual control functionality
+        function sendRelayCommand(channel, state) {
+            fetch('/api/manual-control', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ channel: channel, state: state })
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('manual-status').textContent = data.message;
+            })
+            .catch(() => {
+                document.getElementById('manual-status').textContent = 'Error sending command.';
+            });
+        }
+        document.getElementById('relay1-on').onclick = () => {
+            sendRelayCommand(1, 'on');
+            document.querySelectorAll('.light-icon')[0].classList.add('light-animate');
+        };
+        document.getElementById('relay1-off').onclick = () => {
+            sendRelayCommand(1, 'off');
+            document.querySelectorAll('.light-icon')[0].classList.remove('light-animate');
+        };
+        document.getElementById('relay2-on').onclick = () => {
+            sendRelayCommand(2, 'on');
+            document.querySelectorAll('.light-icon')[1].classList.add('light-animate');
+        };
+        document.getElementById('relay2-off').onclick = () => {
+            sendRelayCommand(2, 'off');
+            document.querySelectorAll('.light-icon')[1].classList.remove('light-animate');
+        };
+    </script>
+</body>
+</html>

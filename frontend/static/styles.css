@@ -1,0 +1,149 @@
+html {
+    scroll-behavior: smooth;
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+}
+.status-indicator {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+    animation: pulse 2s infinite;
+}
+@keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(108, 194, 74, 0.7); }
+    70% { box-shadow: 0 0 0 10px rgba(108, 194, 74, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(108, 194, 74, 0); }
+}
+/* Dark Mode Styling */
+.dark-mode {
+    background-color: #121212;
+    color: #e0e0e0;
+}
+.dark-mode header, 
+.dark-mode .grid > div, 
+.dark-mode .bg-white {
+    background-color: #1f1f1f !important;
+}
+.dark-mode .text-gray-600 {
+    color: #aaaaaa !important;
+}
+.dark-mode .text-gray-800 {
+    color: #ffffff !important;
+}
+.dark-mode .text-gray-500 {
+    color: #888888 !important;
+}
+.dark-mode .border-gray-400 {
+    border-color: #444444 !important;
+}
+.dark-mode button {
+    border-color: #444444 !important;
+}
+.dark-mode .hover\:bg-gray-200:hover {
+    background-color: #333333 !important;
+}
+.dark-mode .hover\:bg-gray-700:hover {
+    background-color: #333333 !important;
+}
+.dark-mode .shadow-md {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5) !important;
+}
+.dark-mode .shadow {
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4) !important;
+}
+.dark-mode .rounded-2xl {
+    border: 1px solid #333333 !important;
+}
+.dark-mode .status-indicator {
+    background-color: #4ade80 !important;
+    animation: pulse-dark 2s infinite;
+}
+@keyframes pulse-dark {
+    0% { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.5); }
+    70% { box-shadow: 0 0 0 10px rgba(74, 222, 128, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0); }
+}
+/* Cosmic theme */
+body.cosmic-mode {
+    background: linear-gradient(135deg, #1a1a2e, #16213e, #0f3460, #533483);
+    color: #e0e7ff;
+    transition: background 0.8s ease, color 0.8s ease;
+}
+
+body.cosmic-mode .card,
+body.cosmic-mode .bg-white {
+    background: rgba(255, 255, 255, 0.05) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    color: #e0e7ff;
+    box-shadow: 0 0 15px rgba(155, 93, 229, 0.6);
+    transition: all 0.4s ease;
+}
+
+body.cosmic-mode .card:hover,
+body.cosmic-mode .bg-white:hover {
+    box-shadow: 0 0 25px rgba(0, 245, 212, 0.8);
+    transform: translateY(-3px);
+}
+
+body.cosmic-mode h2,
+body.cosmic-mode h3,
+body.cosmic-mode h5,
+body.cosmic-mode .text-2xl,
+body.cosmic-mode .text-lg {
+    color: #e0e7ff !important;
+}
+
+/* Improved text visibility for cards */
+body.cosmic-mode .text-gray-600,
+body.cosmic-mode .text-gray-500 {
+    color: #c8d6e8 !important;
+}
+
+body.cosmic-mode .text-gray-800 {
+    color: #f1f5f9 !important;
+}
+
+body.cosmic-mode .text-gray-700 {
+    color: #e2e8f0 !important;
+}
+
+/* Enhanced visibility for specific sensor values */
+body.cosmic-mode .text-blue-600 {
+    color: #60a5fa !important;
+}
+
+/* Motion indicator and zone status visibility */
+body.cosmic-mode .bg-gray-100 {
+    background-color: rgba(255, 255, 255, 0.15) !important;
+    color: #f1f5f9 !important;
+}
+
+body.cosmic-mode .bg-gray-200 {
+    background-color: rgba(255, 255, 255, 0.2) !important;
+    color: #f1f5f9 !important;
+}
+
+body.cosmic-mode .text-gray-600 {
+    color: #cbd5e1 !important;
+}
+
+/* Chart axis and text improvements */
+body.cosmic-mode canvas {
+    filter: brightness(1.2) contrast(1.1);
+}
+
+body.cosmic-mode button {
+    background: linear-gradient(135deg, #9b5de5, #00f5d4);
+    color: #fff !important;
+    border: none;
+    transition: 0.3s;
+}
+
+body.cosmic-mode button:hover {
+    opacity: 0.9;
+    box-shadow: 0 0 15px #00f5d4;
+}

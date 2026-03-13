@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Energy Usage</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-gray-100 text-gray-800">
+  <div class="min-h-screen flex">
+    <!-- Sidebar (unchanged nav) -->
+    <nav class="bg-gray-900 text-white w-64 p-6 flex-shrink-0">
+      <div class="flex flex-col items-center justify-center mb-10">
+        <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" class="h-16 w-16 object-contain">
+        <h1 class="text-2xl font-bold tracking-tight text-green-500">GreenSwitch</h1>
+      </div>
+      <ul>
+        <li class="mb-4">
+          <a href="/" class="flex items-center p-3 hover:bg-gray-700/40 text-gray-300 hover:text-white rounded-lg font-semibold transition-colors">Dashboard</a>
+        </li>
+        <li class="mb-4">
+          <a href="/manual-control" class="flex items-center p-3 hover:bg-gray-700/40 text-gray-300 hover:text-white rounded-lg font-semibold transition-colors">Manual Control</a>
+        </li>
+        <li class="mb-4">
+          <a href="/usage" class="flex items-center p-3 bg-green-500/20 text-green-500 rounded-lg font-semibold">Energy Usage</a>
+        </li>
+      </ul>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="flex-1 p-6 lg:p-8">
+      <header class="mb-8 flex items-center justify-between">
+        <div>
+          <h2 class="text-2xl font-bold">Energy Usage (Wh)</h2>
+          <p class="text-gray-500">Updated every 2 minutes • Last 1 hour chart</p>
+        </div>
+        <div class="flex items-center space-x-3">
+          <span class="text-gray-500">Light</span>
+          <label for="themeSwitch" class="inline-flex relative items-center cursor-pointer">
+            <input type="checkbox" value="" id="themeSwitch" class="sr-only peer">
+            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 dark:peer-focus:ring-green-800 rounded-full peer dark:bg-gray-700 peer-checked:bg-gradient-to-r peer-checked:from-purple-500 peer-checked:to-green-400 transition-all duration-300"></div>
+            <div class="absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform duration-300 peer-checked:translate-x-5"></div>
+          </label>
+          <span class="text-gray-500">Dark</span>
+        </div>
+      </header>
+
+      <!-- Cards -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div class="bg-white p-6 rounded-2xl shadow text-center">
+          <h5 class="text-sm font-medium text-gray-600 mb-2">Relay 1 Total</h5>
+          <p class="text-3xl font-bold text-blue-600"><span id="relay1Wh">--</span> <span class="text-gray-500 text-lg">Wh</span></p>
+        </div>
+        <div class="bg-white p-6 rounded-2xl shadow text-center">
+          <h5 class="text-sm font-medium text-gray-600 mb-2">Relay 2 Total</h5>
+          <p class="text-3xl font-bold text-blue-600"><span id="relay2Wh">--</span> <span class="text-gray-500 text-lg">Wh</span></p>
+        </div>
+        <div class="bg-white p-6 rounded-2xl shadow text-center">
+          <h5 class="text-sm font-medium text-gray-600 mb-2">Combined Total</h5>
+          <p class="text-3xl font-bold text-blue-600"><span id="totalWh">--</span> <span class="text-gray-500 text-lg">Wh</span></p>
+        </div>
+      </div>
+
+      <!-- Chart -->
+      <div class="bg-white p-6 rounded-2xl shadow">
+        <h3 class="text-lg font-semibold text-gray-700 mb-4">Total Usage (Last 1 Hour)</h3>
+        <div class="h-72">
+          <canvas id="usageChart"></canvas>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    // Theme handling
+    const themeSwitch = document.getElementById('themeSwitch');
+    const body = document.body;
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const theme = localStorage.getItem('theme');
+      if (theme === 'dark') {
+        themeSwitch.checked = true;
+        switchToCosmic();
+      } else {
+        themeSwitch.checked = false;
+        switchToLight();
+      }
+      // Update chart theme after initialization
+      setTimeout(() => {
+        updateUsageChartTheme();
+      }, 100);
+    });
+
+    themeSwitch.addEventListener('change', () => {
+      if (themeSwitch.checked) {
+        switchToCosmic();
+        localStorage.setItem('theme', 'dark');
+      } else {
+        switchToLight();
+        localStorage.setItem('theme', 'light');
+      }
+    });
+
+    function switchToLight() {
+      body.classList.remove('cosmic-mode');
+      body.classList.add('light-mode');
+      updateUsageChartTheme();
+    }
+
+    function switchToCosmic() {
+      body.classList.remove('light-mode');
+      body.classList.add('cosmic-mode');
+      updateUsageChartTheme();
+    }
+
+    // Usage data handling
+    const relay1WhEl = document.getElementById('relay1Wh');
+    const relay2WhEl = document.getElementById('relay2Wh');
+    const totalWhEl = document.getElementById('totalWh');
+
+    const ctx = document.getElementById('usageChart').getContext('2d');
+    const usageChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: [],
+        datasets: [{
+          label: 'Cumulative Wh',
+          data: [],
+          borderColor: '#6CC24A',
+          backgroundColor: 'rgba(108, 194, 74, 0.15)',
+          fill: true,
+          tension: 0.3,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          y: { 
+            beginAtZero: true,
+            ticks: { color: '#374151' }
+          },
+          x: {
+            ticks: { color: '#374151' }
+          }
+        }
+      }
+    });
+
+    function updateUsageChartTheme() {
+      const isCosmic = body.classList.contains('cosmic-mode');
+      const primaryColor = isCosmic ? '#9B5DE5' : '#6CC24A';
+      const bgColor = isCosmic ? 'rgba(155, 93, 229, 0.15)' : 'rgba(108, 194, 74, 0.15)';
+      const textColor = isCosmic ? '#e2e8f0' : '#374151';
+
+      usageChart.data.datasets[0].borderColor = primaryColor;
+      usageChart.data.datasets[0].backgroundColor = bgColor;
+      
+      if (usageChart.options.scales.x.ticks) {
+        usageChart.options.scales.x.ticks.color = textColor;
+      }
+      if (usageChart.options.scales.y.ticks) {
+        usageChart.options.scales.y.ticks.color = textColor;
+      }
+      
+      usageChart.update();
+    }
+
+    async function refreshTotals() {
+      try {
+        const res = await fetch('/api/usage/totals');
+        const json = await res.json();
+        relay1WhEl.textContent = json.relay1_wh.toFixed(3);
+        relay2WhEl.textContent = json.relay2_wh.toFixed(3);
+        totalWhEl.textContent = json.total_wh.toFixed(3);
+      } catch (e) {
+        console.error('Failed to load totals', e);
+      }
+    }
+
+    async function refreshChart() {
+      try {
+        const res = await fetch('/api/usage/last-hour');
+        const json = await res.json();
+        usageChart.data.labels = json.labels;
+        usageChart.data.datasets[0].data = json.cumulative_wh;
+        usageChart.update();
+      } catch (e) {
+        console.error('Failed to load last hour chart', e);
+      }
+    }
+
+    async function refreshAll() {
+      await Promise.all([refreshTotals(), refreshChart()]);
+    }
+
+    // Initial load and 2-minute refresh
+    refreshAll();
+    setInterval(refreshAll, 120000);
+  </script>
+</body>
+</html>

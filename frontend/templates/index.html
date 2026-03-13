@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>Green Switch</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <style>
+        .status-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800 transition-colors duration-300 light-mode h-screen overflow-hidden">
+    <div class="h-full flex">
+        <!-- Sidebar -->
+        <nav id="sidebar" class="bg-gray-900 text-white w-64 p-6 flex-shrink-0 overflow-y-auto">
+            <div class="flex flex-col items-center justify-center mb-10">
+                <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" class="h-16 w-16 object-contain">
+                <h1 class="text-2xl font-bold tracking-tight text-green-500">GreenSwitch</h1>
+            </div>
+            <ul>
+                <li class="mb-4">
+                    <a href="/" class="flex items-center p-3 bg-green-500/20 text-green-500 rounded-lg font-semibold">
+                        Dashboard
+                    </a>
+                </li>
+                <li class="mb-4">
+                    <a href="/manual-control" class="flex items-center p-3 hover:bg-gray-700/40 text-gray-300 hover:text-white rounded-lg font-semibold transition-colors">
+                        Manual Control
+                    </a>
+                </li>
+                <li class="mb-4">
+                    <a href="/usage" class="flex items-center p-3 hover:bg-gray-700/40 text-gray-300 hover:text-white rounded-lg font-semibold transition-colors">
+                        Energy Usage
+                    </a>
+                </li>
+            </ul>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="flex-1 overflow-y-auto p-6 lg:p-8">
+            <header class="mb-8 flex items-center justify-between">
+                <div>
+                    <h2 class="text-2xl font-bold">Sensor Overview</h2>
+                    <p class="text-gray-500 mt-1 flex items-center">
+                        <span id="status-indicator" class="status-indicator bg-yellow-500 mr-2"></span>
+                        Live data feed
+                        <span id="connection-status" class="ml-1">connecting...</span>
+                    </p>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <span class="text-gray-500">Light</span>
+                    <label for="themeSwitch" class="inline-flex relative items-center cursor-pointer">
+                        <input type="checkbox" value="" id="themeSwitch" class="sr-only peer">
+                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 dark:peer-focus:ring-green-800 rounded-full peer dark:bg-gray-700 peer-checked:bg-gradient-to-r peer-checked:from-purple-500 peer-checked:to-green-400 transition-all duration-300"></div>
+                        <div class="absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform duration-300 peer-checked:translate-x-5"></div>
+                    </label>
+                    <span class="text-gray-500">Dark</span>
+                </div>
+            </header>
+        
+            <!-- Sensor Cards -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                <!-- Temperature -->
+                <div class="bg-white p-6 rounded-2xl shadow hover:shadow-lg transition-shadow duration-300 text-center">
+                    <h5 class="text-sm font-medium text-gray-600 mb-4">Temperature</h5>
+                    <div class="w-full h-32 mx-auto">
+                        <canvas id="temperature-chart"></canvas>
+                    </div>
+                    <p class="text-2xl font-bold text-gray-800 mt-3">
+                        <span id="tempC">--</span>°C
+                    </p>
+                    <p class="text-sm text-gray-500">
+                        <span id="tempF">--</span>°F
+                    </p>
+                </div>
+
+                <!-- Humidity -->
+                <div class="bg-white p-6 rounded-2xl shadow hover:shadow-lg transition-shadow duration-300 text-center">
+                    <h5 class="text-sm font-medium text-gray-600 mb-4">Humidity</h5>
+                    <div class="w-full h-32 mx-auto">
+                        <canvas id="humidity-chart"></canvas>
+                    </div>
+                    <p class="text-2xl font-bold text-gray-800 mt-3">
+                        <span id="humidity">--</span>%
+                    </p>
+                </div>
+
+                <!-- Light 1 Current Usage -->
+                <div class="bg-white p-6 rounded-2xl shadow hover:shadow-lg transition-shadow duration-300 text-center">
+                    <h5 class="text-sm font-medium text-gray-600 mb-4">Light 1 Current</h5>
+                    <div class="w-full h-32 flex items-center justify-center">
+                        <span id="current1Value" class="text-3xl font-bold text-blue-600">--</span>
+                        <span class="ml-2 text-lg text-gray-500">A</span>
+                    </div>
+                </div>
+
+                <!-- Light 2 Current Usage -->
+                <div class="bg-white p-6 rounded-2xl shadow hover:shadow-lg transition-shadow duration-300 text-center">
+                    <h5 class="text-sm font-medium text-gray-600 mb-4">Light 2 Current</h5>
+                    <div class="w-full h-32 flex items-center justify-center">
+                        <span id="current2Value" class="text-3xl font-bold text-blue-600">--</span>
+                        <span class="ml-2 text-lg text-gray-500">A</span>
+                    </div>
+                </div>
+
+                <!-- Total Current Usage -->
+                <div class="bg-white p-6 rounded-2xl shadow hover:shadow-lg transition-shadow duration-300 text-center">
+                    <h5 class="text-sm font-medium text-gray-600 mb-4">Total Current</h5>
+                    <div class="w-full h-32 flex items-center justify-center">
+                        <span id="currentTotalValue" class="text-3xl font-bold text-blue-600">--</span>
+                        <span class="ml-2 text-lg text-gray-500">A</span>
+                    </div>
+                </div>
+
+                <!-- Motion Status -->
+                <div class="bg-white p-6 rounded-2xl shadow hover:shadow-lg transition-shadow duration-300 text-center">
+                    <h5 class="text-sm font-medium text-gray-600 mb-4">Motion Status</h5>
+                    <div id="motionCard" class="w-full h-32 flex items-center justify-center">
+                        <div id="motionIndicator" class="w-24 h-24 rounded-full flex items-center justify-center text-lg font-semibold transition-all duration-300 bg-gray-100">
+                            <span id="motion">No Motion</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Relay/Light Status -->
+                <div class="bg-white p-6 rounded-2xl shadow hover:shadow-lg transition-shadow duration-300 text-center">
+                    <h5 class="text-sm font-medium text-gray-600 mb-4">Zone 1 Light</h5>
+                    <div class="w-full h-16 flex items-center justify-center">
+                        <span id="relay1Status" class="px-4 py-2 rounded-full text-lg font-semibold bg-gray-200 text-gray-700">--</span>
+                        <span id="relay1Duration" class="ml-4 text-sm text-gray-500">--</span>
+                    </div>
+                    <h5 class="text-sm font-medium text-gray-600 mb-4 mt-4">Zone 2 Light</h5>
+                    <div class="w-full h-16 flex items-center justify-center">
+                        <span id="relay2Status" class="px-4 py-2 rounded-full text-lg font-semibold bg-gray-200 text-gray-700">--</span>
+                        <span id="relay2Duration" class="ml-4 text-sm text-gray-500">--</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Historical Charts Section -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-white p-6 rounded-2xl shadow-md">
+                    <h3 class="text-lg font-semibold text-gray-600 mb-4">Temperature History</h3>
+                    <div class="h-64">
+                        <canvas id="tempHistoryChart"></canvas>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-2xl shadow-md">
+                    <h3 class="text-lg font-semibold text-gray-600 mb-4">Humidity History</h3>
+                    <div class="h-64">
+                        <canvas id="humidityChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    </div>
+
+    <script>
+        const themeSwitch = document.getElementById('themeSwitch');
+        const body = document.body;
+        const statusIndicator = document.getElementById('status-indicator');
+        const connectionStatus = document.getElementById('connection-status');
+
+        // Theme handling
+        document.addEventListener('DOMContentLoaded', () => {
+            const theme = localStorage.getItem('theme');
+            if (theme === 'dark') {
+                themeSwitch.checked = true;
+                switchToCosmic();
+            } else {
+                themeSwitch.checked = false;
+                switchToLight();
+            }
+            // Update chart theme after initialization
+            setTimeout(() => {
+                updateChartsTheme();
+            }, 100);
+        });
+
+        themeSwitch.addEventListener('change', () => {
+            if (themeSwitch.checked) {
+                switchToCosmic();
+                localStorage.setItem('theme', 'dark');
+            } else {
+                switchToLight();
+                localStorage.setItem('theme', 'light');
+            }
+        });
+
+        function switchToLight() {
+            body.classList.remove('cosmic-mode');
+            body.classList.add('light-mode');
+            updateChartsTheme();
+        }
+
+        function switchToCosmic() {
+            body.classList.remove('light-mode');
+            body.classList.add('cosmic-mode');
+            updateChartsTheme();
+        }
+
+        // Initialize gauge charts
+        const gaugeConfigs = {
+            temperature: {
+                id: 'temperature-chart',
+                max: 50,
+                min: -10,
+                color: '#6CC24A'
+            },
+            humidity: {
+                id: 'humidity-chart',
+                max: 100,
+                min: 0,
+                color: '#6CC24A'
+            }
+        };
+
+        const gaugeCharts = {};
+        function createGauge(config, initialValue = 0) {
+            const ctx = document.getElementById(config.id).getContext('2d');
+            const max = config.max || 100;
+            const min = config.min || 0;
+            const value = Math.max(min, Math.min(max, initialValue));
+
+            const data = {
+                datasets: [{
+                    data: [value - min, max - value],
+                    backgroundColor: [config.color, "#e5e7eb"],
+                    borderColor: ["#fff", "#fff"],
+                    borderWidth: 2,
+                    circumference: 180,
+                    rotation: 270,
+                    cutout: '80%'
+                }]
+            };
+
+            const options = {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { tooltip: { enabled: false } },
+                animation: { duration: 500 }
+            };
+
+            return new Chart(ctx, {
+                type: 'doughnut',
+                data: data,
+                options: options
+            });
+        }
+
+        // Initialize history charts
+        const tempHistoryChart = new Chart(document.getElementById('tempHistoryChart').getContext('2d'), {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Temperature (°C)',
+                    data: [],
+                    borderColor: '#6CC24A',
+                    backgroundColor: 'rgba(108, 194, 74, 0.2)',
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: { duration: 800 },
+                scales: {
+                    y: {
+                        beginAtZero: false,
+                        grid: { color: '#e5e7eb' },
+                        ticks: { color: '#374151' }
+                    },
+                    x: {
+                        grid: { color: '#e5e7eb' },
+                        ticks: { color: '#374151' }
+                    }
+                }
+            }
+        });
+
+        const humidityChart = new Chart(document.getElementById('humidityChart').getContext('2d'), {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Humidity (%)',
+                    data: [],
+                    borderColor: '#6CC24A',
+                    backgroundColor: 'rgba(108, 194, 74, 0.2)',
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: { duration: 800 },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100,
+                        grid: { color: '#e5e7eb' },
+                        ticks: { color: '#374151' }
+                    },
+                    x: {
+                        grid: { color: '#e5e7eb' },
+                        ticks: { color: '#374151' }
+                    }
+                }
+            }
+        });
+
+        // Initialize gauges
+        for (const key in gaugeConfigs) {
+            gaugeCharts[key] = createGauge(gaugeConfigs[key]);
+        }
+
+        // Socket.IO setup
+        const socket = io();
+
+        socket.on('connect', () => {
+            statusIndicator.classList.remove('bg-yellow-500', 'bg-red-500');
+            statusIndicator.classList.add('bg-green-500');
+            connectionStatus.textContent = 'connected';
+        });
+
+        socket.on('disconnect', () => {
+            statusIndicator.classList.remove('bg-yellow-500', 'bg-green-500');
+            statusIndicator.classList.add('bg-red-500');
+            connectionStatus.textContent = 'disconnected';
+        });
+
+        function updateGauge(key, value) {
+            const chart = gaugeCharts[key];
+            const config = gaugeConfigs[key];
+            if (chart && config) {
+                const normalizedValue = Math.max(config.min, Math.min(config.max, value));
+                chart.data.datasets[0].data[0] = normalizedValue - config.min;
+                chart.data.datasets[0].data[1] = config.max - normalizedValue;
+                chart.update();
+            }
+        }
+
+        function updateChartsTheme() {
+            const isCosmic = body.classList.contains('cosmic-mode');
+            const primaryColor = isCosmic ? '#9B5DE5' : '#6CC24A';
+            const bgColor = isCosmic ? 'rgba(155, 93, 229, 0.2)' : 'rgba(108, 194, 74, 0.2)';
+            const textColor = isCosmic ? '#e2e8f0' : '#374151';
+
+            [tempHistoryChart, humidityChart].forEach(chart => {
+                chart.data.datasets[0].borderColor = primaryColor;
+                chart.data.datasets[0].backgroundColor = bgColor;
+                
+                // Update axis text colors for better visibility
+                if (chart.options.scales.x.ticks) {
+                    chart.options.scales.x.ticks.color = textColor;
+                }
+                if (chart.options.scales.y.ticks) {
+                    chart.options.scales.y.ticks.color = textColor;
+                }
+                
+                chart.update();
+            });
+
+            for (const key in gaugeCharts) {
+                const chart = gaugeCharts[key];
+                chart.data.datasets[0].backgroundColor[0] = primaryColor;
+                chart.update();
+            }
+        }
+
+        // Handle incoming sensor data
+        socket.on('sensor_update', (data) => {
+            // Update gauge charts
+            updateGauge('temperature', data.temperature);
+            updateGauge('humidity', data.humidity);
+
+            // Update displayed values
+            document.getElementById('tempC').textContent = data.temperature.toFixed(1);
+            document.getElementById('tempF').textContent = data.fahrenheit.toFixed(1);
+            document.getElementById('humidity').textContent = data.humidity.toFixed(1);
+
+            // Update motion status
+            const motionIndicator = document.getElementById('motionIndicator');
+            if (data.motion) {
+                motionIndicator.classList.remove('bg-gray-100', 'text-gray-600');
+                motionIndicator.classList.add('bg-green-100', 'text-green-600');
+                document.getElementById('motion').textContent = 'Motion Detected';
+            } else {
+                motionIndicator.classList.remove('bg-green-100', 'text-green-600');
+                motionIndicator.classList.add('bg-gray-100', 'text-gray-600');
+                document.getElementById('motion').textContent = 'No Motion';
+            }
+
+            // Update current sensor values
+            if (typeof data.current1 !== 'undefined') {
+                document.getElementById('current1Value').textContent = data.current1.toFixed(3);
+            } else {
+                document.getElementById('current1Value').textContent = '--';
+            }
+            if (typeof data.current2 !== 'undefined') {
+                document.getElementById('current2Value').textContent = data.current2.toFixed(3);
+            } else {
+                document.getElementById('current2Value').textContent = '--';
+            }
+            if (typeof data.current_total !== 'undefined') {
+                document.getElementById('currentTotalValue').textContent = data.current_total.toFixed(3);
+            } else {
+                document.getElementById('currentTotalValue').textContent = '--';
+            }
+
+            // Update relay/light status for Zone 1
+            const relay1Status = document.getElementById('relay1Status');
+            if (data.relay1) {
+                relay1Status.textContent = 'ON';
+                relay1Status.classList.remove('bg-gray-200', 'text-gray-700');
+                relay1Status.classList.add('bg-green-200', 'text-green-700');
+            } else {
+                relay1Status.textContent = 'OFF';
+                relay1Status.classList.remove('bg-green-200', 'text-green-700');
+                relay1Status.classList.add('bg-gray-200', 'text-gray-700');
+            }
+            // Update relay/light status for Zone 2
+            const relay2Status = document.getElementById('relay2Status');
+            if (data.relay2) {
+                relay2Status.textContent = 'ON';
+                relay2Status.classList.remove('bg-gray-200', 'text-gray-700');
+                relay2Status.classList.add('bg-green-200', 'text-green-700');
+            } else {
+                relay2Status.textContent = 'OFF';
+                relay2Status.classList.remove('bg-green-200', 'text-green-700');
+                relay2Status.classList.add('bg-gray-200', 'text-gray-700');
+            }
+            // Update durations
+            document.getElementById('relay1Duration').textContent = data.light1_duration !== undefined ? `ON for ${data.light1_duration} min` : '--';
+            document.getElementById('relay2Duration').textContent = data.light2_duration !== undefined ? `ON for ${data.light2_duration} min` : '--';
+
+            // Update history charts
+            if (tempHistoryChart.data.labels.length > 20) {
+                tempHistoryChart.data.labels.shift();
+                tempHistoryChart.data.datasets[0].data.shift();
+                humidityChart.data.labels.shift();
+                humidityChart.data.datasets[0].data.shift();
+            }
+
+            tempHistoryChart.data.labels.push(data.time);
+            tempHistoryChart.data.datasets[0].data.push(data.temperature);
+            humidityChart.data.labels.push(data.time);
+            humidityChart.data.datasets[0].data.push(data.humidity);
+
+            tempHistoryChart.update();
+            humidityChart.update();
+
+            // Update last updated time
+            document.getElementById('last-updated').textContent = data.time;
+        });
+
+        // Load initial data
+        fetch('/api/data')
+            .then(response => response.json())
+            .then(data => {
+                if (data.temperature.length > 0) {
+                    const temps = data.temperature.slice(-20);
+                    const hums = data.humidity.slice(-20);
+
+                    tempChart.data.labels = temps.map(t => t.time);
+                    tempChart.data.datasets[0].data = temps.map(t => t.value);
+                    humidityChart.data.labels = hums.map(h => h.time);
+                    humidityChart.data.datasets[0].data = hums.map(h => h.value);
+
+                    tempChart.update();
+                    humidityChart.update();
+
+                    // Update current values
+                    const lastTemp = temps[temps.length - 1];
+                    const lastHum = hums[hums.length - 1];
+                    document.getElementById('tempC').textContent = lastTemp.value.toFixed(1);
+                    document.getElementById('tempF').textContent = lastTemp.fahrenheit.toFixed(1);
+                    document.getElementById('humidity').textContent = lastHum.value.toFixed(1);
+                }
+            });
+    </script>
+</body>
+</html>
